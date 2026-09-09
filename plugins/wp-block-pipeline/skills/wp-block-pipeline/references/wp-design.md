@@ -119,6 +119,48 @@ Additions specific to this path:
 
 ---
 
+## Mobile is not a checkpoint
+
+Most of a generated page's mobile behaviour is decided when the markup is
+written, not when someone checks it at the end. Get these right and 375px
+usually just works; get them wrong and no amount of later fiddling fixes it.
+
+**Grids: `minimumColumnWidth`, never `columnCount`.** A grid with
+`"columnCount":3` stays three columns and crushes its contents. A grid with
+`"minimumColumnWidth":"17rem"` chooses its own column count from the space
+available and reflows to one column on a phone with no breakpoint logic at all.
+
+**Let Columns stack.** They stack by default. `"isStackedOnMobile":false` is
+almost always wrong — reach for it only when two columns are genuinely a single
+unit, like a small label beside a value.
+
+**Media & Text keeps `is-stacked-on-mobile`.** It is in the default markup for a
+reason. Hand-building the same layout out of Columns loses it.
+
+**Cap the top of the type scale, and cap it harder for monospace.** A heading
+that is fine at `4rem` on a desktop wraps to six lines on a phone, which is on
+the refuse list. Monospace runs roughly a third wider per character than a
+proportional face at the same size, so a mono display face needs a lower clamp
+maximum and negative tracking, not the same numbers.
+
+**Test the longest real heading, not the placeholder.** A design that only holds
+with the exact copy generated breaks the first time the client edits it.
+
+**Cover heights in `vh`, never `px`.** A fixed pixel height is a different
+proportion of every screen. Note that a Cover crops harder as the viewport
+narrows: a 3:2 image in a tall narrow container loses its sides, so check the
+subject still survives the crop rather than assuming the composition holds.
+
+**Centre hero content.** Left-aligned hero text inside a narrow column reads as
+misaligned rather than deliberate on a phone, especially under a centred logo
+and nav.
+
+**Never space with Spacer blocks.** Fixed heights do not respond to screen
+width. Use `blockGap` and group padding, both of which come off the fluid
+scale.
+
+---
+
 ## The client is going to edit this
 
 A design that only works with the exact copy generated is a design that breaks

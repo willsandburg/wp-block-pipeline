@@ -70,6 +70,72 @@ They are the escape hatches, and using one silently defeats the whole rule.
 - **Blocks from plugins on the target site**, even good ones. The site's plugin
   set is not stable across clients.
 
+### Styling the verified markup cannot express
+
+Before reaching for an attribute that is not documented for a block, reach for a
+class instead.
+
+When a hero needs a particular height, a card needs rounded corners, or a row
+needs a hover state, the instinct is to add an attribute — `minHeight`,
+`style.border.radius`, a different `dimRatio`. **That is unverified markup.** It
+renders perfectly on the front end and fails validation the moment the client
+opens the editor, which is the exact failure this file exists to prevent.
+
+Add `className` and put the CSS in the plugin:
+
+```html
+<!-- wp:cover {"url":"...","id":8,"dimRatio":50,"isDark":true,"align":"full","className":"hs-hero"} -->
+<div class="wp-block-cover alignfull hs-hero">
+```
+
+```css
+.hs-hero{min-height:45vh}
+@media (max-width:600px){.hs-hero{min-height:52vh}}
+```
+
+`className` is a universal block support. It appears only in the class list, so
+it cannot mismatch what `save()` produces. The CSS lives in one place, the client
+can still edit everything inside the block, and media queries and interaction
+states become available — none of which an attribute gives you.
+
+Use it for heights, radii, shadows, hover and focus treatments, equal-height
+cards, and anything responsive the fluid scale does not cover. Do **not** use it
+to fake a block that does not exist; that rule is unchanged.
+
+### JavaScript — allowed, but say what it costs first
+
+JavaScript is permitted **only** when an effect genuinely cannot be built from
+approved blocks and global styles, and **only** from the plugin, properly
+enqueued. Never through `core/html` or `core/shortcode` — those stay banned, and
+inline `<script>` in page content is the same bypass wearing a different hat.
+
+The clearest legitimate case is scroll-**triggered** animation. CSS can only do
+scroll-**linked** motion (`animation-timeline: view()`), where progress is bound
+to the scrollbar: stop scrolling and it freezes half-finished. A reveal that
+plays on its own clock once an element enters the viewport needs
+IntersectionObserver, and there is no CSS equivalent shipping in stable browsers.
+
+**Before writing any JavaScript, tell the person this, plainly:**
+
+> Anything JavaScript does is the one part of this site your client cannot
+> change. It will not appear in the block editor, it is not in any block's
+> settings, and editing it means editing plugin code. Everything else on the
+> site they can adjust themselves.
+
+That is the whole reason the rest of this file is strict. Say it before building,
+not in the handover — it may change their mind, and it should.
+
+Every piece of JavaScript must also:
+
+- **Degrade to nothing.** Add the hiding class from JavaScript, never in the
+  markup. If the script does not run, the visitor sees ordinary content rather
+  than a blank page.
+- **Respect `prefers-reduced-motion`.** Check it and bail out early.
+- **Live in one place.** One enqueued file or inline block in the plugin, not
+  scattered per page.
+- **Be recorded in the project `CLAUDE.md`**, with what it does and why no block
+  could do it. A future session will otherwise find it and try to remove it.
+
 ### When something genuinely is not available
 
 Stop. Do not improvise, do not approximate with `core/html`, and do not build it
@@ -159,6 +225,64 @@ Individual block, when the section is otherwise unlocked:
 
 Default posture: lock structural sections `contentOnly`, leave body-content
 areas unlocked. Decide per page and record it in the site's `CLAUDE.md`.
+
+### Alignment — `align`
+
+**Verified against WordPress 7.1 with Twenty Twenty-Five, 9 September 2026.**
+
+Without `align`, every block renders at `contentSize`. A hero image sits in a
+672px column and the page reads as a document rather than a site. This is the
+attribute that lets a block escape the content width, and the rest of the design
+guidance assumes it exists — `global-styles.md` defines `wideSize` as "what a
+wide-aligned block expands to", and `wp-design.md` puts "Everything at
+`wideSize`" on the refuse list. Both are meaningless without it.
+
+The JSON carries `"align":"full"` or `"align":"wide"`; the element carries the
+matching `alignfull` or `alignwide` class. Both must be present and agree.
+
+Group, full width, with a background:
+
+```html
+<!-- wp:group {"align":"full","backgroundColor":"tertiary","layout":{"type":"constrained"}} -->
+<div class="wp-block-group alignfull has-tertiary-background-color has-background">
+</div>
+<!-- /wp:group -->
+```
+
+The align class comes **first**, before the colour classes.
+
+Cover, full width:
+
+```html
+<!-- wp:cover {"url":"...","id":8,"dimRatio":50,"isDark":true,"align":"full","layout":{"type":"constrained"}} -->
+<div class="wp-block-cover alignfull">
+```
+
+Image, wide — the align class sits between the block class and the size class:
+
+```html
+<!-- wp:image {"id":9,"sizeSlug":"large","linkDestination":"none","align":"wide"} -->
+<figure class="wp-block-image alignwide size-large">
+```
+
+Media & Text, wide:
+
+```html
+<!-- wp:media-text {"align":"wide","mediaId":9,"mediaType":"image"} -->
+<div class="wp-block-media-text alignwide is-stacked-on-mobile">
+```
+
+**Use the contrast deliberately.** If everything is full-width, nothing is. A
+full-bleed section reads as wide only because the section before it was at
+`contentSize`.
+
+**How this was verified.** A page containing all four aligned variants plus an
+unaligned control was pushed and opened in the editor on the pinned version. No
+block reported invalid content, which means Gutenberg re-ran each `save()` and
+matched it against the stored markup. That is the failure this file exists to
+prevent, so it is sufficient to approve the markup. It does not capture
+byte-for-byte canonical output the way the Copy method does; if that is ever
+needed, use the maintainer procedure at the end of this file.
 
 ---
 
@@ -394,6 +518,26 @@ Background image with content over it. The standard hero.
 <!-- /wp:cover -->
 ```
 
+**`dimRatio` is not free-form, and this bites.** Core's `save()` adds a level
+class alongside `has-background-dim` for every value except 50:
+`has-background-dim-{10 × round(ratio ÷ 10)}`. So `dimRatio: 55` must carry
+`has-background-dim-60` on the span, and `dimRatio: 70` must carry
+`has-background-dim-70`. Only 50 needs no level class, which is why the markup
+above uses it.
+
+Get this wrong and every Cover on the site shows "Attempt Block Recovery" while
+the front end looks perfect — the page renders correctly, so nothing reveals the
+fault until someone opens the editor. If you change `dimRatio`, add the matching
+class:
+
+```html
+<!-- wp:cover {"url":"...","id":124,"dimRatio":60,"isDark":true} -->
+<div class="wp-block-cover"><span aria-hidden="true" class="wp-block-cover__background has-background-dim-60 has-background-dim"></span>
+```
+
+Note the level class comes **before** `has-background-dim`. Simplest safe route:
+leave `dimRatio` at 50 and pick images that clear contrast at 50.
+
 `dimRatio` is the overlay opacity, 0 to 100. Anything below 40 over a busy
 photo will fail contrast on the text above it — check it rather than
 guessing. `isDark` controls which default text colour the block assumes.
@@ -448,36 +592,39 @@ breaks on phones and reads wrong to a screen reader.
 
 ## Plugin blocks
 
-### Form — `{ns}/form`
+### Contact form — `highlandsites/form`
 
-Provided by the receiver plugin, so it is present on every site in the pipeline
-and nowhere else. Replace `{ns}` with the plugin's block namespace.
+**Verified against WordPress 7.1, 9 September 2026.** Provided by the receiver
+plugin, so it exists on pipeline sites and nowhere else.
 
 ```html
-<!-- wp:{ns}/form {"formId":"contact","submitLabel":"Send"} -->
-<div class="wp-block-{ns}-form" data-form-id="contact">
-<!-- wp:{ns}/form-field {"name":"name","label":"Name","type":"text","required":true} -->
-<div class="wp-block-{ns}-form-field"></div>
-<!-- /wp:{ns}/form-field -->
-<!-- wp:{ns}/form-field {"name":"email","label":"Email","type":"email","required":true} -->
-<div class="wp-block-{ns}-form-field"></div>
-<!-- /wp:{ns}/form-field -->
-<!-- wp:{ns}/form-field {"name":"message","label":"Message","type":"textarea","required":false} -->
-<div class="wp-block-{ns}-form-field"></div>
-<!-- /wp:{ns}/form-field -->
-</div>
-<!-- /wp:{ns}/form -->
+<!-- wp:highlandsites/form {"formId":"contact","submitLabel":"Send it"} /-->
 ```
 
-`formId` must be unique within the site. Field `type` is one of `text`,
-`email`, `tel`, `textarea`, `select`.
+That is the whole markup. **The block is dynamic — its `save()` returns null —
+so the stored content is only the comment and there is nothing for the editor to
+compare.** It cannot produce "Attempt Block Recovery" under any circumstances,
+which is why a dynamic block is the right shape for anything with server
+behaviour behind it.
 
-Keep forms short. Every field costs completions, and a contact form asking for
-more than name, email and message is asking for abandonment.
+Attributes: `formId` (unique per site), `submitLabel`, `successMessage`,
+`recipient`. Supports `align: wide`.
 
-**This markup is provisional** until the form block is built. Update this
-section from the block's actual `save` output once it exists, not the other way
-round.
+The fields are fixed at Name, Email and Message. That is deliberate — every
+extra field costs completions, and a contact form asking for more than those
+three is asking for abandonment.
+
+**It needs no JavaScript.** The form is a plain HTML POST to `admin-post.php`
+which redirects back with a success or error flag, so it works with scripts
+disabled. Do not "improve" it into a fetch call without a reason.
+
+Submissions are stored as private `hs_submission` posts **and** emailed to the
+site admin. Storing first matters: hosts drop outgoing mail regularly, and a
+form that silently loses enquiries is worse than no form.
+
+Protections, in the order they run: nonce, honeypot field, a three-second
+minimum between render and submit, then a one-minute per-IP rate limit. All four
+are cheap and none of them inconvenience a person.
 
 ---
 

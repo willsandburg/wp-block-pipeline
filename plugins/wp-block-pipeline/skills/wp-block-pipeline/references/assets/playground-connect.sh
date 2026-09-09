@@ -2,13 +2,17 @@
 #
 # Write site/site.json for a running Playground site.
 #
-# Run this in a SECOND terminal while playground.sh is running in the first.
+# The application password is NOT created over REST. It cannot be: WordPress
+# only accepts application passwords for REST Basic auth, never a user's real
+# login password, so creating the first one over REST is a chicken-and-egg.
 #
-# Playground has no WP-CLI, so the application password is created through the
-# REST API using the admin login the Playground CLI sets up (admin/password).
+# Instead blueprint.json mints it in-process with a runPHP step at boot and
+# writes it to /wordpress/pipeline-credential — outside wp-content, so it is
+# not web-accessible. This script reads it from the host side of that mount,
+# copies it into site/site.json, and deletes it.
 #
 # Usage:
-#   ./playground-connect.sh              assumes port 9400
+#   ./playground-connect.sh              port from .playground.port
 #   ./playground-connect.sh --port 9401
 
 set -euo pipefail
@@ -18,8 +22,6 @@ say()  { printf '==> %s\n' "$1"; }
 warn() { printf '  ! %s\n' "$1"; }
 die()  { printf 'ERROR: %s\n' "$1" >&2; exit 1; }
 
-# playground.sh records the port it actually bound to, since it moves up if the
-# preferred one is taken.
 PORT=9400
 [ -f .playground.port ] && PORT="$(cat .playground.port)"
 while [ $# -gt 0 ]; do
@@ -31,60 +33,64 @@ done
 
 URL="http://127.0.0.1:$PORT"
 USER="admin"
-PASS="password"
 SITE_JSON="site/site.json"
+LOG=".playground.log"
 
 # ---------------------------------------------------------------- reachable
 
 say "Checking $URL"
 curl -sf -o /dev/null --max-time 10 "$URL" \
   || die "Nothing responding at $URL.
-       Is playground.sh running in another terminal?
+       Is playground.sh running? Try ./playground.sh --status
        If it picked a different port, pass --port <n>."
 
-# --------------------------------------------------------------------- auth
+# ------------------------------------------------- locate the mounted site
 
+# Playground logs the host directory it mounted at /wordpress. Read the path
+# from there rather than guessing at ~/.wordpress-playground/sites/<hash>.
+[ -f "$LOG" ] || die "$LOG not found. Start the site with ./playground.sh first."
+
+MOUNT="$(grep -m1 '^Mount ' "$LOG" | awk '{print $2}' || true)"
+[ -n "$MOUNT" ] || die "No 'Mount' line in $LOG, so the site directory is unknown.
+       Restart with ./playground.sh and try again."
+[ -d "$MOUNT" ] || die "Mount path from $LOG does not exist:
+       $MOUNT"
+
+CRED="$MOUNT/pipeline-credential"
+say "Site directory: $MOUNT"
+
+# ------------------------------------------------------------- credential
+
+[ -s "$CRED" ] || die "No credential at $CRED.
+       blueprint.json should mint one with a runPHP step at boot.
+       Check the step is present, then restart: ./playground.sh --stop && ./playground.sh"
+
+APP_PASSWORD="$(tr -d '\r\n' < "$CRED")"
+
+say "Verifying the credential"
 CODE="$(curl -s -o /tmp/pg_themes.json -w '%{http_code}' \
-  -u "$USER:$PASS" "$URL/wp-json/wp/v2/themes?status=active" || true)"
-
-if [ "$CODE" != "200" ]; then
-  die "REST returned HTTP $CODE using the default admin login.
-       If you changed the admin password in the Playground site, this script
-       needs updating. Body: /tmp/pg_themes.json"
-fi
+  -u "$USER:$APP_PASSWORD" "$URL/wp-json/wp/v2/themes?status=active" || true)"
+[ "$CODE" = "200" ] || die "REST returned HTTP $CODE with the minted credential.
+       Body: /tmp/pg_themes.json"
 say "Authenticated"
+
+# ------------------------------------------------------------------- theme
 
 THEME="$(grep -o '"stylesheet":"[^"]*"' /tmp/pg_themes.json | head -1 | cut -d'"' -f4 || true)"
 [ -n "$THEME" ] || THEME="unknown"
 say "Theme: $THEME"
 [ "$THEME" = "twentytwentyfive" ] || warn "Expected twentytwentyfive — check blueprint.json ran."
 
-# ---------------------------------------------------- application password
-
-# Requires WP_ENVIRONMENT_TYPE=local, which blueprint.json sets. Without it
-# WordPress refuses to issue application passwords over plain http.
-say "Creating application password"
-APP_JSON="$(curl -s -u "$USER:$PASS" \
-  -X POST "$URL/wp-json/wp/v2/users/me/application-passwords" \
-  -H "Content-Type: application/json" \
-  -d '{"name":"pipeline"}' || true)"
-
-APP_PASSWORD="$(echo "$APP_JSON" | grep -o '"password":"[^"]*"' | head -1 | cut -d'"' -f4 || true)"
-
-if [ -z "$APP_PASSWORD" ]; then
-  warn "Could not create an application password."
-  warn "Usually means WP_ENVIRONMENT_TYPE is not 'local' — check blueprint.json."
-  warn "Falling back to the admin login, which works fine locally."
-  APP_PASSWORD="$PASS"
-fi
-
 # ------------------------------------------------------------ global styles
 
-GS_ID="$(grep -o 'global-styles/[0-9]\+' /tmp/pg_themes.json | head -1 | cut -d/ -f2 || true)"
+# WordPress escapes forward slashes in JSON, so the href reads
+# "...\/global-styles\/5". Matching a bare "global-styles/5" never hits.
+GS_ID="$(grep -o 'global-styles\\\{0,1\}/[0-9][0-9]*' /tmp/pg_themes.json \
+         | head -1 | grep -o '[0-9][0-9]*' || true)"
 if [ -n "$GS_ID" ]; then
   say "Global styles ID: $GS_ID"
 else
-  warn "No global styles record yet."
+  warn "No global styles record found."
   warn "Open $URL/wp-admin/site-editor.php, change any style, save, re-run."
   GS_ID="null"
 fi
@@ -117,8 +123,10 @@ cat > "$SITE_JSON" <<JSON
 }
 JSON
 
-rm -f /tmp/pg_themes.json
-say "Wrote $SITE_JSON"
+chmod 600 "$SITE_JSON"
+rm -f /tmp/pg_themes.json "$CRED"
+say "Wrote $SITE_JSON and removed the staged credential"
 echo
 echo "    Site:  $URL"
-echo "    Admin: $URL/wp-admin  ($USER / $PASS)"
+echo "    Admin: $URL/wp-admin"
+echo "    Login: admin / password   (Playground default for a local sandbox)"

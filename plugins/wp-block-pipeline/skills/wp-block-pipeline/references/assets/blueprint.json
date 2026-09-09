@@ -4,7 +4,9 @@
     "php": "8.3",
     "wp": "7.1"
   },
-  "features": { "networking": true },
+  "features": {
+    "networking": true
+  },
   "landingPage": "/wp-admin/",
   "steps": [
     {
@@ -16,7 +18,14 @@
         "WP_DEBUG_DISPLAY": false
       }
     },
-    { "step": "activateTheme", "themeFolderName": "twentytwentyfive" },
+    {
+      "step": "activateTheme",
+      "themeFolderName": "twentytwentyfive"
+    },
+    {
+      "step": "runPHP",
+      "code": "<?php require_once '/wordpress/wp-load.php'; $u = get_user_by('login', 'admin'); if ($u) { $r = WP_Application_Passwords::create_new_application_password($u->ID, ['name' => 'pipeline']); if (!is_wp_error($r)) { file_put_contents('/wordpress/pipeline-credential', $r[0]); } }"
+    },
     {
       "step": "setSiteOptions",
       "options": {
@@ -24,6 +33,9 @@
         "blog_public": "0"
       }
     },
-    { "step": "runPHP", "code": "<?php require_once '/wordpress/wp-load.php'; foreach ([get_page_by_path('sample-page'), get_page_by_path('hello-world','OBJECT','post')] as $p) { if ($p) wp_delete_post($p->ID, true); }" }
+    {
+      "step": "runPHP",
+      "code": "<?php require_once '/wordpress/wp-load.php'; foreach ([get_page_by_path('sample-page'), get_page_by_path('hello-world','OBJECT','post')] as $p) { if ($p) wp_delete_post($p->ID, true); }"
+    }
   ]
 }

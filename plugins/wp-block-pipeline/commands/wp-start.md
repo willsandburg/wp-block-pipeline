@@ -82,8 +82,14 @@ When it reports the site is up, run `./playground-connect.sh` yourself. It
 verifies REST, creates an application password, reads the global styles ID, and
 writes `site/site.json`.
 
-Then tell them the site URL and the admin login, and carry on. Useful later:
-`./playground.sh --stop` and `--status`.
+Then tell them the site URL **and the admin login, in full** — Playground's
+defaults are username `admin`, password `password`. Do not make them go looking
+for it: they cannot get into their own site without it, and the site's admin
+email is `admin@localhost.com`, so signing in with their own address fails
+confusingly. State it plainly, and say once that these defaults are fine for a
+throwaway local sandbox and never acceptable on a real host.
+
+Useful later: `./playground.sh --stop` and `--status`.
 
 `blueprint.json` pins the WordPress version and sets
 `WP_ENVIRONMENT_TYPE=local`, which is what allows application passwords over
@@ -157,8 +163,13 @@ Establish and record in `CLAUDE.md`:
 1. The one thing a visitor should remember. Not a feature list, one thing.
 2. Brand assets — ask for a logo, colours, fonts, and for anything to go in
    `resources/design/`.
-3. The page list, and what each page is for.
-4. Editing posture — which sections the client may restructure, which are
+3. **What the name means.** Ask where it comes from before deriving any visual
+   direction from it. A name that reads as a place or a word will push the whole
+   art direction one way, and guessing wrong is expensive — one site here was
+   named after Highland, Utah and was very nearly given an entire Scottish
+   Highlands art direction on an assumption.
+4. The page list, and what each page is for.
+5. Editing posture — which sections the client may restructure, which are
    locked `contentOnly`.
 
 Use AskUserQuestion. Do not skip this because it feels slow. A site generated
@@ -184,9 +195,30 @@ to look.
 
 ## Phase 7 — Check the result
 
-Per page: open in the editor and check for block recovery prompts, check the
-locking behaves as decided, check at 375px / 768px / 1440px, and check body
-text contrast against its actual background.
+Run the mechanical checks first — most of this needs no browser. Per page:
+approved blocks only, exactly one `h1`, no skipped heading levels, `alt` on
+every image, no hardcoded px or hex, both preset syntaxes present and agreeing,
+every colour slug existing in the palette, every attachment ID present in the
+library. This catches things reading the page will not, such as an `h1 -> h3`
+skip.
+
+Then per page, by eye: open in the editor and check for block recovery prompts,
+check the locking behaves as decided, and check body text contrast against its
+**actual** background — for a Cover that means measuring the image's brightest
+band, not its average, because an average hides the one region where white text
+fails.
+
+**Then check 375px, 768px and 1440px, in that order.** Start at 375: it is the
+width that breaks things, and a layout that survives it usually survives the
+rest. Look specifically for a heading wrapping past three lines, a grid that
+refused to reflow, a Cover whose subject has been cropped out, and hero text
+that reads as misaligned. The rules that prevent all four are in
+`references/wp-design.md` under "Mobile is not a checkpoint" — apply them while
+generating rather than repairing afterwards.
+
+Template parts are not covered by the page checks. Look at the header and footer
+too: a stock block theme ships demo navigation links pointing at `#`, and
+shipping those is the same failure as shipping demo content.
 
 Report what passed and what did not. Do not call the site finished until all
 four pass on every page.

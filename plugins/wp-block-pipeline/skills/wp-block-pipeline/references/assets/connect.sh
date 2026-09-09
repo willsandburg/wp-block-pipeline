@@ -97,7 +97,7 @@ if [ "$THEME" != "twentytwentyfive" ]; then
   warn "against it. Activate it in Appearance > Themes, or update WP_THEME."
 fi
 
-GLOBAL_STYLES_ID="$(grep -o 'global-styles/[0-9]\+' /tmp/wp_themes.json | head -1 | cut -d/ -f2 || true)"
+GLOBAL_STYLES_ID="$(grep -o 'global-styles\\\{0,1\}/[0-9][0-9]*' /tmp/wp_themes.json | head -1 | grep -o '[0-9][0-9]*' || true)"
 
 if [ -z "$GLOBAL_STYLES_ID" ]; then
   warn "No global styles record found."

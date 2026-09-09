@@ -395,6 +395,24 @@ docker compose run --rm wpcli option update page_on_front $HOME_PAGE_ID
 
 ---
 
+## Step 8b — Use `page-no-title` for any page with its own hero
+
+Twenty Twenty-Five's default `page` template renders `post-title` as an `h1`. A
+page whose content opens with its own hero heading therefore ships **two `h1`
+elements** — an accessibility fault, and one this pipeline's own design rules
+forbid.
+
+The theme already ships the fix. Set the page's `template` field when pushing:
+
+```json
+{"title":"Home","slug":"home","status":"publish","template":"page-no-title"}
+```
+
+That also drops the `spacing|60` margin and padding the default template puts
+above the content, which is what leaves a large gap over a full-bleed hero.
+
+---
+
 ## Step 9 — Verify
 
 A page that pushed successfully is not a page that works. Check all four:
@@ -495,16 +513,39 @@ Before running it, on the live site:
 3. Twenty Twenty-Five activated
 4. Permalinks set to anything other than Plain, or the REST API is unreachable
 5. An application password created under Users → Profile → Application Passwords
-6. The Site Editor opened once, any style changed, and saved — the global styles
-   record does not exist until then
+6. ~~The Site Editor opened once and saved~~ — **this appears not to be required
+   on WordPress 7.1.** A Playground site built from `blueprint.json` had a global
+   styles record before the Site Editor was ever opened, and so did a live 7.1
+   install. The belief that it was missing traced to a grep bug in `connect.sh`
+   that could never match the ID. If a target genuinely reports no record, open
+   the Site Editor, change any style and save — but do not ask for it up front.
 
 The script checks 2 through 6 and tells you which one failed rather than
 returning a generic error.
 
 ### After connecting
 
-Push with `--config site/site.live.json`. Everything else is identical: styles,
-then media, then pages.
+Push with `assets/deploy.py site/site.live.json`. The order is the same — styles,
+then media, then pages — but **the page files are not transferable as they
+stand.**
+
+Page markup embeds attachment IDs (`"id":8`, `wp-image-8`, `"mediaId":9`) and
+absolute upload URLs, and those belong to the site they were generated against.
+Push the same files to a second site unchanged and every image breaks and every
+Cover fails validation.
+
+`deploy.py` uploads the media to the target first, records the target's own IDs,
+then rewrites every ID, upload URL and internal page link before the pages go up.
+It swaps in two passes through placeholders, because a local ID can collide with
+a live one — local 8 becoming live 12 while local 12 also exists — and a naive
+sequential replace corrupts it.
+
+Internal links need the same treatment. A button pointing at
+`http://127.0.0.1:9400/output/` survives the media swap untouched and ships a
+link to your laptop.
+
+Run it with `--dry` first. That prints exactly what would be uploaded and created
+without touching the target.
 
 If the host caches (SG Optimizer, a CDN), purge after every push or you will
 see stale pages and think the push failed.
