@@ -1,10 +1,44 @@
 # Local environment
 
-How to run a block pipeline site locally on macOS, Windows or Linux.
+You may not need one. Read this first.
 
-There are two modes. **Port mode** is the default and needs nothing but Docker.
-**Domain mode** gives every project a clean `.loc` address with no port number,
-at the cost of a one-time setup that differs per operating system.
+## Do you need a local site at all?
+
+**Probably not.** If the client already has hosting, use a staging site. Most
+hosts have one-click staging, it installs nothing on your machine, and it runs
+the same WordPress version, PHP version and server stack the site ships on —
+which is the only environment where block validation actually tells you
+anything.
+
+A local site is worth setting up when you want to work offline, when there is
+no host yet, or when you want to break things without anyone seeing.
+
+## If you do want one, two options
+
+**Playground** — one command, Node 20.18 or newer, nothing else:
+
+```
+./playground.sh
+```
+
+No Docker, no MySQL, no Apache. Starts in seconds, persists between runs, and
+`blueprint.json` pins the WordPress version. It uses SQLite instead of MySQL,
+which does not matter for block markup or global styles.
+
+**Docker** — the full MySQL and Apache stack. Matches production more closely,
+costs a multi-gigabyte install and a daemon you have to remember to start.
+Worth it if you are testing something database-specific or you already run
+Docker anyway.
+
+The rest of this file covers the Docker path.
+
+---
+
+## Docker: two modes
+
+**Port mode** is the default and needs nothing but Docker. **Domain mode**
+gives every project a clean `.loc` address with no port number, at the cost of
+a one-time setup that differs per operating system.
 
 Start in port mode. Move to domain mode only if you run several projects at
 once and the ports become annoying.
@@ -263,6 +297,31 @@ docker compose run --rm wpcli option update siteurl "http://localhost:8080"
 **`.loc` does not resolve.** DNS step did not take. macOS and Linux: `ping -c 1
 anything.loc` should hit 127.0.0.1. Windows: check the hosts file entry.
 
-**Database will not start.** Usually a half-written volume from an interrupted
-first run. `docker compose down -v` and start over — nothing of value is in
-there yet.
+**Database will not start, or bootstrap times out waiting for it.** Two
+causes, both fixed the same way.
+
+Empty `DB_PASSWORD` or `DB_ROOT_PASSWORD` in `.env`. Both must be non-empty:
+an empty password makes the database entrypoint skip creating the application
+user, logging only a `[Warn]`, and everything downstream then fails as though
+the database were unreachable.
+
+Or a stale volume from an earlier run with different credentials. Database
+credentials are only applied on first initialisation, so changing `.env`
+afterwards has no effect until the volume is recreated.
+
+```
+docker compose down -v
+docker compose up -d
+./bootstrap.sh
+```
+
+`-v` deletes the local database and WordPress install. Nothing of value lives
+there — `site/` is the source of truth, so re-running bootstrap and re-pushing
+rebuilds everything.
+
+**wp-cli fails with `ERROR 1156: Plugin caching_sha2_password could not be
+loaded` or `ERROR 2026: TLS/SSL error`.** The compose file is running MySQL 8
+rather than MariaDB. The MariaDB client shipped in `wordpress:cli` cannot load
+MySQL 8's default auth plugin, and it rejects MySQL 8's auto-generated
+self-signed certificate. Use `mariadb:11` as shipped. If you switched the image
+deliberately, you will need `--skip-ssl` and a `mysql_native_password` user.

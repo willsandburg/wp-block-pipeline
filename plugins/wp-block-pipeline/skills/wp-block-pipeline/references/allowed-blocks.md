@@ -7,9 +7,10 @@ Read this before writing any block markup. It is the authority on what is
 permitted — not your general knowledge of WordPress, and not what the target
 site happens to have installed.
 
-**Written against WordPress 7.1.** Block save output changes between releases,
-so this file is version-specific. If the target site runs a different version,
-re-run the verification pass at the end of this file first.
+**Verified against WordPress 7.1 with Twenty Twenty-Five.** Block save output
+changes between releases, so this file is version-specific. If a target site
+runs a different major version, the markup here is not guaranteed — see
+"Re-verifying after a WordPress upgrade" at the end of this file.
 
 ---
 
@@ -523,30 +524,44 @@ something to improvise into page content.
 
 ---
 
-## Verification pass — required, not optional
+## Re-verifying after a WordPress upgrade
 
-**Do this before generating a single page.** The markup above is written from
-documented save output, not captured from a running 7.1 install. WordPress 7.1
-alone brought roughly 600 block editor enhancements and 630 bug fixes over 7.0,
-across 1,480 changed files. Assume some of what is written here is now wrong.
+**Maintainers only. Not part of building a site.** Skip this unless you are
+moving the pinned WordPress version.
 
-For each block:
+Block save output changes between WordPress releases. When a block's markup no
+longer matches what its save function produces, the editor shows "Attempt Block
+Recovery" — a broken block the client cannot fix. That is why this file is tied
+to one version, and why it has to be rechecked when the pin moves.
 
-1. Build it in the editor on the pinned WordPress version and the pinned base
-   theme, with the attributes shown here.
-2. Open the block's options menu and choose **Copy**.
-3. Paste the clipboard somewhere and compare it against this file.
-4. Where they differ, **the editor is right.** Update this file.
+WordPress 7.2 is due around December 2026 and brings Twenty Twenty-Seven, so
+plan on doing this then.
 
-Work through the list in order and tick them off. Budget an hour. Blocks with
-the most attributes — Cover, Media & Text, Image, Group with background — are
-the most likely to have drifted.
+### The procedure
 
-Redo this whenever the pinned WordPress version changes. WordPress 7.2 is due
-around December 2026 and brings Twenty Twenty-Seven, so plan on redoing it then
-and re-checking the theme pin at the same time.
+1. Stand up a site on the new version with the pinned theme.
+2. Upload one image to the media library. Cover, Image and Media & Text all
+   embed a real attachment ID and cannot be checked without one. Delete it
+   afterwards.
+3. For each approved block, in this order — most attributes first, since those
+   drift most:
 
-A quicker sanity check between full passes: push one page using every approved
-block, open it in the editor, and look for any recovery prompt. That catches
-gross breakage in two minutes, though it will not catch a block that validates
-but renders differently.
+   Cover, Media & Text, Image, Group with background, Group with grid layout,
+   Columns, Buttons, Details, Quote, Table, Heading, Paragraph, List, Spacer,
+   Separator.
+
+   Build it in the editor with the attributes shown in this file, open the
+   block's options menu, choose **Copy**, and compare the clipboard against
+   what is written here.
+4. **Where they differ, the editor is right.** Update this file.
+5. One block at a time. Batching is how a wrong correction gets written and not
+   noticed.
+
+Budget about an hour. When finished, update the version line at the top of this
+file and bump the plugin version.
+
+### Promoting a candidate block
+
+Same procedure: build it, copy it, capture the real markup, then move it out of
+Candidates into the approved sections above with notes on its required
+attributes.

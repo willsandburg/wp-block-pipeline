@@ -52,6 +52,40 @@ the running WordPress version fails validation and shows the client "Attempt
 Block Recovery" on a page they cannot fix. One unverified block ruins the
 handoff.
 
+## Explain before you ask
+
+Whenever you ask the person to do something or decide something, say **what to
+do, why it is needed, and what happens if it goes wrong** — in plain language,
+before the question. Assume they are not a developer and have never seen this
+tool before.
+
+- Not "upload an image to the media library" but "upload any image at
+  <url> — Cover and Image blocks embed a real attachment ID, so they can't be
+  checked without one. Any photo works, and it gets deleted afterwards."
+- Not "run bootstrap" but "this installs WordPress and sets up the login the
+  pipeline uses. Takes a couple of minutes the first time."
+- Never name a file, flag or setting without saying what it does.
+
+The same applies to failures. Say what broke, what it means, and the one thing
+to try — not the raw error alone.
+
+Length is not the goal; clarity is. Two plain sentences beat a paragraph of
+detail they cannot act on.
+
+**Every terminal instruction includes the absolute path.** Run `pwd` first and
+give the person a `cd` line before the command. Never say "run this in the
+project root" — they are usually in a different terminal tab in their home
+directory, and a bare command fails in a way that looks like something else
+went wrong.
+
+**Prefer a staging site over a local one.** Most hosts have one-click staging,
+it needs nothing installed, and it matches what the client ends up with. Offer
+local only when they want to work offline or have no host yet.
+
+**Never write or read `.env`.** Write `env.staged.txt` and have the person copy
+it. This only applies to the Docker path — Playground needs no `.env` at all. The deny rule that blocks agent access to `.env` files is a good one and
+protects real credentials elsewhere; do not ask anyone to weaken it.
+
 ---
 
 ## The reference files
@@ -75,7 +109,6 @@ files, `bootstrap` and `connect` scripts, `.env.example`, `.gitignore`,
 | | |
 | --- | --- |
 | `/wp-start` | Set up a site end to end, local or live. The main entry point. |
-| `/wp-verify` | The block verification pass. Run once per pinned WordPress version. |
 | `/wp-push` | Push styles, media and pages in the correct order. |
 
 ---
@@ -90,7 +123,7 @@ Fixed. Do not substitute without changing the reference files.
 | Theme | Twenty Twenty-Five, bundled with core, activated by name |
 | Blocks | core only, restricted to the approved list |
 | Design | global styles in the database, never files |
-| Local | Docker, ports by default |
+| Local | Playground CLI (Node only), or Docker if you want the full stack |
 
 The version and theme are pinned deliberately. Block save output changes
 between releases, and Twenty Twenty-Seven becomes the default on new installs
@@ -116,14 +149,12 @@ site.
 firewall or a security plugin, or permalinks set to Plain. `connect.sh` reports
 which.
 
+**Bootstrap times out waiting for the database.** Almost always an empty
+`DB_PASSWORD` in `.env`, or a stale volume from a run with different
+credentials. `docker compose down -v` then `up -d` and re-run bootstrap. Never
+leave those passwords empty — an empty one makes the database skip creating the
+user, and the failure then looks like the database is unreachable.
+
 **Application Passwords are missing from the user profile.** The site is not on
 HTTPS. WordPress disables the feature entirely without SSL.
 
----
-
-## Before the first client site
-
-The markup in `allowed-blocks.md` was written from documented save output, not
-captured from a running install. Run `/wp-verify` once against the pinned
-WordPress version and fix what differs. It takes about an hour and it is the
-difference between a reliable pipeline and one that breaks in front of a client.

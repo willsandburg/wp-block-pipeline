@@ -51,20 +51,42 @@ services:
     restart: unless-stopped
 
   db:
-    image: mysql:8.0
+    # MariaDB, not MySQL 8, and the reason matters:
+    #
+    #   1. MySQL 8 defaults to caching_sha2_password. The MariaDB client that
+    #      ships in wordpress:cli cannot load that plugin, so every wp-cli
+    #      command fails with "ERROR 1156: Plugin caching_sha2_password could
+    #      not be loaded".
+    #   2. MySQL 8 auto-generates a self-signed CA and enables TLS. The MariaDB
+    #      client verifies certificates by default and rejects it with
+    #      "ERROR 2026: TLS/SSL error: self-signed certificate in certificate
+    #      chain" — before authentication even happens.
+    #
+    # MariaDB has neither problem. It is also what most WordPress hosts run.
+    image: mariadb:11
     environment:
-      MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
-      MYSQL_DATABASE: ${DB_DATABASE}
-      MYSQL_USER: ${DB_USERNAME}
-      MYSQL_PASSWORD: ""
+      # A real password. An empty MARIADB_PASSWORD makes the entrypoint skip
+      # user creation entirely, with only a [Warn] in the log — the app user
+      # never exists and everything downstream fails as though the database
+      # were unreachable.
+      MARIADB_DATABASE: ${DB_DATABASE}
+      MARIADB_USER: ${DB_USERNAME}
+      MARIADB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set and non-empty}
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?DB_ROOT_PASSWORD must be set and non-empty}
     volumes:
-      # Named volume, not ./docker/mysql-data. A bind mount for MySQL data is
-      # slow on macOS and Windows and hits permission errors on Linux.
+      # Named volume, not a bind mount. Bind-mounting database files is slow on
+      # macOS and Windows and hits permission errors on Linux.
       - db_data:/var/lib/mysql
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "--user=root"]
-      timeout: 20s
-      retries: 10
+      # Connects as the APP user over TCP, which is what WordPress and wp-cli
+      # actually do. A root-over-local-socket ping reports healthy even when
+      # the app user does not exist, which turns a credentials fault into a
+      # confusing 60-second timeout.
+      test: ["CMD", "mariadb", "-h", "127.0.0.1", "-u", "${DB_USERNAME}", "-p${DB_PASSWORD}", "-e", "SELECT 1"]
+      interval: 5s
+      timeout: 10s
+      retries: 20
+      start_period: 30s
     restart: unless-stopped
 
   # WP-CLI. Runs on demand, not as a long-lived service:
@@ -100,7 +122,7 @@ services:
       PMA_HOST: db
       PMA_PORT: 3306
       PMA_USER: root
-      PMA_PASSWORD: ""
+      PMA_PASSWORD: ${DB_ROOT_PASSWORD}
     restart: unless-stopped
 
 volumes:

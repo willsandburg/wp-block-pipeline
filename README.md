@@ -26,30 +26,51 @@ To confirm it worked, type `/` and look for `wp-start`.
 ## Use
 
 ```
-/wp-start                             set up a local site
-/wp-start https://example.com         connect to a live site
+/wp-start
 ```
 
-It reads the rules, sets up the environment, interviews you about the site, and
-walks through generating and pushing it, stopping so you can look at the output
-before it goes further.
+It asks whether the site is local, live, or both, then sets up only what that
+needs — no Docker unless you want a local preview. Then it interviews you about
+the site and walks through generating and pushing it, stopping so you can look
+at the output before it goes further.
 
 | | |
 | --- | --- |
 | `/wp-start` | Set up a site end to end. The main entry point. |
-| `/wp-verify` | Verify block markup against your WordPress version. Run once before your first site. |
 | `/wp-push` | Push styles, media and pages in the right order. |
 
 ---
 
 ## What you need
 
-**Local sites:** Docker Desktop, or Docker Engine plus Compose on Linux.
-Nothing else — no PHP, no MySQL, no local WordPress.
+You are asked where the site runs before anything gets installed. Three
+options, in order of preference:
 
-**Live sites:** WordPress installed, SSL on and HTTPS forced, and an
-Application Password. WordPress hides Application Passwords entirely without
-SSL, so that one is not optional.
+| Option | You need | You do |
+| --- | --- | --- |
+| **Local preview** (recommended) | Node 20.18+ | Nothing. It sets itself up. |
+| **A site you already have** | WordPress, SSL, an app password | One terminal command to connect. |
+| **Local with Docker** (advanced) | Docker Desktop | One file copy, one command. |
+
+**The local preview needs no terminal at all.** It runs WordPress through the
+Playground runtime — no Docker, no MySQL, no Apache — and everything is set up
+inside the Claude Code window.
+
+**Use a site you already have when the build needs to match production.** Most
+hosts have one-click staging, and it runs the same WordPress and PHP versions
+the site ships on, which is the only place block validation tells you anything
+definitive.
+
+**Live and staging sites** need SSL on with HTTPS forced, and an Application
+Password. WordPress hides Application Passwords entirely without SSL, so that
+one is not optional.
+
+### One prompt, on the Docker path only
+
+Claude Code often has a rule denying agent access to `.env` files. It is a good
+rule and this plugin does not ask you to change it. Instead it writes
+`env.staged.txt` and gives you one line to run. Playground needs no `.env` at
+all.
 
 ---
 
@@ -71,19 +92,6 @@ breaking in the editor.
 Sections can be locked so the client can edit text and swap images but cannot
 restructure the layout. That is the handoff: they get real control over content
 without the ability to take the page apart.
-
----
-
-## First run
-
-```
-/wp-verify
-```
-
-Do this before your first client site. The block markup ships written from
-documented save output rather than captured from a running install, and
-WordPress 7.1 alone changed a lot. The command walks you through checking each
-block and fixing what differs. About an hour, once per WordPress version.
 
 ---
 

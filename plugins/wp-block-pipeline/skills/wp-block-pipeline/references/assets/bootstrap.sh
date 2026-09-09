@@ -16,7 +16,12 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 if [ ! -f .env ]; then
-  echo "No .env found. Copy .env.example to .env before running bootstrap." >&2
+  echo "No .env found." >&2
+  if [ -f env.staged.txt ]; then
+    echo "Run:  cp env.staged.txt .env    then re-run this script." >&2
+  else
+    echo "Copy .env.example to .env and fill it in, then re-run this script." >&2
+  fi
   exit 1
 fi
 
@@ -48,7 +53,17 @@ say "Waiting for the database"
 for i in $(seq 1 60); do
   if wp db check >/dev/null 2>&1; then break; fi
   if [ "$i" -eq 60 ]; then
-    echo "Database did not become ready in 60s. Check: docker compose logs db" >&2
+    echo >&2
+    echo "The database never accepted a connection. Actual error:" >&2
+    echo >&2
+    wp db check 2>&1 | sed 's/^/    /' >&2
+    echo >&2
+    echo "Most likely causes:" >&2
+    echo "  - DB_PASSWORD or DB_ROOT_PASSWORD empty in .env. Both must be set." >&2
+    echo "    An empty password makes the db entrypoint skip creating the user." >&2
+    echo "  - Stale volume from an earlier run with different credentials." >&2
+    echo "    Fix with: docker compose down -v && docker compose up -d" >&2
+    echo "    That deletes local data only." >&2
     exit 1
   fi
   sleep 1

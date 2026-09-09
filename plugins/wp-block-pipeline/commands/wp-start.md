@@ -1,97 +1,177 @@
 ---
-description: Set up a WordPress block pipeline site end to end — local or live. Run this first on any new site.
-argument-hint: "[site URL, or leave blank for local]"
+description: Set up a WordPress block pipeline site end to end — asks whether you want local, live, or both. Run this first on any new site.
+argument-hint: "[optional site URL]"
 allowed-tools: Bash, Read, Write, Edit, Glob, Grep, AskUserQuestion, WebFetch
 ---
 
 # Start a WordPress block pipeline site
 
-Target: **$ARGUMENTS**
+Argument, if given: **$ARGUMENTS**
 
-If that is blank, this is a local Docker site. If it is a URL, this is a live
-site.
-
-Work through the phases below. Stop and ask before moving to the next phase if
-something fails — do not improvise around a failure.
+Work through the phases in order. If a phase fails, stop and report what
+failed — do not improvise around it or retry with variations.
 
 ---
 
 ## Phase 0 — Load the rules
 
-Read these before doing anything else:
+Read these first:
 
 - `references/wp-blocks-stack.md` — the procedure
 - `references/allowed-blocks.md` — the only blocks permitted, and the rule
 - `references/global-styles.md` — the design system shape
-- `references/wp-design.md` — design standard
+- `references/wp-design.md` — the design standard
 
-These are binding, not advisory. In particular: only approved blocks may be
-emitted, `core/html` and `core/shortcode` are banned outright, and hardcoded
-values instead of preset variables are banned. If something is asked for that
-has no approved block, refuse in the four-part shape given in
-`allowed-blocks.md` rather than improvising.
+Binding, not advisory. Only approved blocks may be emitted. `core/html` and
+`core/shortcode` are banned. Hardcoded values where a preset variable belongs
+are banned. If something is asked for with no approved block, refuse in the
+four-part shape given in `allowed-blocks.md` rather than improvising.
 
-## Phase 1 — Environment
+## Phase 1 — Ask where this site runs
 
-**Local:** copy the files from `references/assets/` into the project root,
-substitute the slug, then `docker compose up -d` and run `bootstrap.sh`
-(`bootstrap.ps1` on Windows PowerShell). Detect which shell is available rather
-than assuming.
+**Ask before installing anything.** Do not infer it from whether an argument
+was passed. Use AskUserQuestion, and present the options in this order:
 
-**Live:** run `connect.sh` (or `connect.ps1`). It prompts for the URL, username
-and application password. Do not ask for the password in chat — the script
-takes it directly and keeps it out of the transcript.
+> Where do you want to build this site?
+>
+> - **Local preview** (recommended) — runs on this machine, needs only
+>   Node 20.18+. Nothing for you to install or type; I set it up here.
+> - **A site you already have** — a live site or a staging copy on your host.
+>   Needs one terminal command to connect. Closest match to what the client
+>   ends up with.
+> - **Local with Docker** (advanced) — full MariaDB and Apache stack. Needs
+>   Docker Desktop and one manual file copy. Only if you specifically want the
+>   production stack locally.
 
-If `connect.sh` reports a failure, read its message: it names the specific cause
-(401 credentials, 403 firewall, 404 permalinks or REST unreachable). Report it
-plainly and stop. Do not retry with variations.
+Present them in that order. The first option is recommended because the person
+does not have to leave this window: no terminal, no file copying, no
+credentials to create.
 
-## Phase 2 — Confirm the site is ready
+If an argument was passed that looks like a URL, mention it as the default for
+the second option, but still ask.
 
-Check and report:
+**Install nothing beyond what the chosen option needs.** Never set up Docker
+unless Docker was explicitly chosen.
+
+If they picked a local option, ask separately whether they also want to push to
+a live site once it looks right.
+
+## Phase 2 — Environment
+
+### If Playground
+
+**Do all of this yourself. The person types nothing.**
+
+Check Node is 20.18 or newer. If it is not, say so plainly and offer the other
+two options — do not tell them to go install Node unless they want to.
+
+Copy `playground.sh`, `playground-connect.sh` and `blueprint.json` from
+`references/assets/` into the project root, and make the scripts executable.
+Nothing else is needed: no compose files, no `.env`, no bootstrap, no
+credentials for them to create.
+
+Run `./playground.sh` **in the background**. It starts the server, waits until
+the site actually answers, and exits — it does not hold the terminal. First run
+downloads the runtime and can take a couple of minutes, so tell them it is
+starting and let it work.
+
+If it fails, it prints the last 30 lines of `.playground.log`. Report the real
+error rather than retrying.
+
+When it reports the site is up, run `./playground-connect.sh` yourself. It
+verifies REST, creates an application password, reads the global styles ID, and
+writes `site/site.json`.
+
+Then tell them the site URL and the admin login, and carry on. Useful later:
+`./playground.sh --stop` and `--status`.
+
+`blueprint.json` pins the WordPress version and sets
+`WP_ENVIRONMENT_TYPE=local`, which is what allows application passwords over
+plain http. Do not remove either.
+
+### If Docker
+
+Copy the files from `references/assets/` into the project root and substitute
+the slug.
+
+**Never write `.env` directly, and never read one.** Many people have a
+settings rule denying agent access to `.env` files, and it is a good rule worth
+keeping. Always write **`env.staged.txt`** instead.
+
+Then get the absolute working directory with `pwd` and give the person **both
+lines, with the real path filled in** — never "run this in the project root",
+because they will very likely be in a different folder or a different terminal
+tab:
+
+> Run these two lines in a terminal, then tell me when it's done:
+> ```
+> cd /absolute/path/from/pwd
+> cp env.staged.txt .env
+> ```
+
+Wait for confirmation. Do not attempt `.env` first to see whether it is
+allowed, and do not suggest changing their permission settings.
+
+**This applies to every terminal instruction in this command, not just this
+one.** Always run `pwd` and prefix with a `cd` to the absolute path. Assume the
+person is in a fresh terminal in their home directory, because they usually
+are.
+
+Detect whether Traefik is running and whether `.loc` resolves. If both, use
+domain mode. Otherwise use port mode, and check the ports are free.
+
+Then `docker compose up -d` and run `bootstrap.sh`, or `bootstrap.ps1` on
+Windows PowerShell. Detect which shell is available rather than assuming.
+
+### If live or both
+
+Run `connect.sh` (or `connect.ps1`). It prompts for the URL, username and
+application password.
+
+**Do not ask for the password in chat.** The script takes it directly so it
+stays out of the transcript.
+
+If it reports a failure, read its message — it names the cause: 401 is
+credentials, 403 is the host firewall or a security plugin, 404 is permalinks
+set to Plain or REST unreachable. Report which and stop.
+
+## Phase 3 — Confirm the site is ready
+
+For whichever targets exist, check and report:
 
 - The site responds
 - Twenty Twenty-Five is active
 - The WordPress version, and whether it matches the pinned version
 - The global styles record exists
 
-If the global styles record is missing, tell me to open the Site Editor, change
-any style, and save. That record cannot be created from outside.
+If the global styles record is missing, tell the person to open the Site
+Editor, change any style, and save. It cannot be created from outside.
 
-If the WordPress version does not match the pin, say so clearly. The block
-markup was verified against one version and is not guaranteed on another.
-
-## Phase 3 — Has verification been done?
-
-Check whether `references/allowed-blocks.md` still carries the unverified
-warning. If it does, tell me the verification pass has not been run and that
-`/wp-verify` does it.
-
-Ask whether to run it now or proceed anyway. If proceeding, say once that
-blocks may fail validation, then continue without repeating it.
+If the version does not match the pin, say so plainly. The block markup was
+verified against one version and is not guaranteed on another.
 
 ## Phase 4 — Interview
 
-Before generating anything, establish and record in `CLAUDE.md`:
+Establish and record in `CLAUDE.md`:
 
 1. The one thing a visitor should remember. Not a feature list, one thing.
-2. Brand assets — ask for a logo, colours, fonts, and for anything to be
-   dropped in `resources/design/`.
+2. Brand assets — ask for a logo, colours, fonts, and for anything to go in
+   `resources/design/`.
 3. The page list, and what each page is for.
 4. Editing posture — which sections the client may restructure, which are
    locked `contentOnly`.
 
-Use AskUserQuestion. Do not skip this because it seems slow. A site generated
-without it will be generic, and no amount of styling fixes that afterwards.
+Use AskUserQuestion. Do not skip this because it feels slow. A site generated
+without it will be generic, and styling does not fix that afterwards.
 
 ## Phase 5 — Global styles
 
 Write `site/styles.json` per `references/global-styles.md`, derived from the
 brand assets or the interview answers.
 
-Push it, then **stop and tell me to look at the site.** Do not continue to
-pages until I have confirmed the styling looks right. This is the highest
-leverage step and the cheapest one to redo.
+Push it, then **stop and ask the person to look at the site.** Do not continue
+to pages until they confirm. This is the highest-leverage step and the cheapest
+one to redo.
 
 ## Phase 6 — Pages
 
@@ -99,25 +179,26 @@ Media first, always — Image and Cover blocks embed attachment IDs, so the
 attachments must exist first. Record every new page and attachment ID in the
 site config immediately.
 
-Then one page at a time, starting with home. After each push, tell me to look
-at it before continuing.
+Then one page at a time, starting with home. After each push, stop and ask them
+to look.
 
-## Phase 7 — Verify
+## Phase 7 — Check the result
 
-For each page: open in the editor and check for block recovery prompts, check
-the locking behaves as decided, check at 375px / 768px / 1440px, and check body
+Per page: open in the editor and check for block recovery prompts, check the
+locking behaves as decided, check at 375px / 768px / 1440px, and check body
 text contrast against its actual background.
 
-Report what passed and what did not. Do not describe the site as finished until
-all four pass on every page.
+Report what passed and what did not. Do not call the site finished until all
+four pass on every page.
 
 ---
 
 ## Throughout
 
-- Never regenerate a site config file that already has entries in `pages` or
-  `media`. Those IDs are the only record of what is on the site.
+- **Never write or read `.env`.** Stage it and have the person copy it.
+- Never regenerate a site config that has entries in `pages` or `media`. Those
+  IDs are the only record of what is on the site.
 - Never put credentials in chat, in `CLAUDE.md`, or in any committed file.
-- Push to local before live where both exist.
-- If I ask for something with no approved block, refuse and explain. Do not
+- Where both local and live exist, push local first.
+- If asked for something with no approved block, refuse and explain. Do not
   reach for `core/html`.
