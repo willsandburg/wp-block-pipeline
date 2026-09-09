@@ -1,0 +1,9 @@
+.env
+site/site.json
+site/site.live.json
+site/site.*.json.backup.*
+resources/design/
+wp-content/
+*.log
+.DS_Store
+Thumbs.db

@@ -1,0 +1,60 @@
+# Optional Traefik override — gives the site a .loc domain instead of a port.
+#
+# Only use this after the one-time Traefik setup in
+# references/local-environment.md. Without it, the .loc address will not
+# resolve.
+#
+# Start with both files:
+#   docker compose -f docker-compose.yml -f docker-compose.traefik.yml up -d
+#
+# Or set this once in .env so plain `docker compose up -d` picks up both:
+#   COMPOSE_FILE=docker-compose.yml:docker-compose.traefik.yml
+#
+# On Windows the separator is a semicolon, not a colon:
+#   COMPOSE_FILE=docker-compose.yml;docker-compose.traefik.yml
+#
+# Also set in .env, or WordPress will keep redirecting to localhost:
+#   WP_URL=http://{slug}.loc
+#   SITE_HOST={slug}.loc
+#   COMPOSE_PROJECT_NAME={slug}
+#
+# Note: the published ports from the base file stay active. The site is
+# reachable at BOTH http://{slug}.loc and http://localhost:${WP_PORT}. That is
+# harmless, and leaving them alone avoids needing Compose v2.24+ for the
+# `!reset` directive. If you want the ports gone, comment them out in the base
+# docker-compose.yml.
+
+services:
+
+  web:
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.${COMPOSE_PROJECT_NAME:-site}.rule=Host(`${SITE_HOST}`)"
+      - "traefik.http.routers.${COMPOSE_PROJECT_NAME:-site}.entrypoints=web"
+      - "traefik.http.services.${COMPOSE_PROJECT_NAME:-site}.loadbalancer.server.port=80"
+    networks:
+      - traefik_network
+      - default
+
+  db:
+    networks:
+      - default
+
+  wpcli:
+    networks:
+      - default
+
+  phpmyadmin:
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.${COMPOSE_PROJECT_NAME:-site}-pma.rule=Host(`pma.${SITE_HOST}`)"
+      - "traefik.http.routers.${COMPOSE_PROJECT_NAME:-site}-pma.entrypoints=web"
+      - "traefik.http.services.${COMPOSE_PROJECT_NAME:-site}-pma.loadbalancer.server.port=80"
+    networks:
+      - traefik_network
+      - default
+
+networks:
+  traefik_network:
+    external: true
+  default:

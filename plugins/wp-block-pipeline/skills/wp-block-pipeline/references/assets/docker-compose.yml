@@ -1,0 +1,108 @@
+# WordPress block pipeline — local environment for {slug}
+#
+# Cross-platform. Works identically on macOS, Windows and Linux with nothing
+# installed but Docker Desktop (or Docker Engine on Linux).
+#
+#   docker compose up -d
+#   ./bootstrap.sh          (macOS / Linux / Git Bash / WSL)
+#   .\bootstrap.ps1         (Windows PowerShell)
+#
+# Site at http://localhost:${WP_PORT}. For a .loc domain instead, see
+# references/local-environment.md and add the Traefik override file.
+#
+# Two things are deliberate:
+#
+#   1. WordPress core lives in a NAMED VOLUME, not a host folder. Bind-mounting
+#      a host folder over /var/www/html gives an empty site, and on Windows and
+#      macOS it is also slow, because every PHP include crosses the VM boundary.
+#      Only the plugin folder is bind-mounted, since that is what gets edited.
+#
+#   2. The WordPress tag is pinned. Block save output changes between releases
+#      and the markup in references/allowed-blocks.md is only valid against one.
+#      Currently pinned to 7.1. If you change it, re-run the block verification
+#      pass at the end of allowed-blocks.md before generating anything — 7.1
+#      alone brought ~600 block editor changes over 7.0.
+
+services:
+
+  web:
+    image: wordpress:7.1-php8.3-apache
+    ports:
+      - "${WP_PORT:-8080}:80"
+    volumes:
+      - wp_core:/var/www/html
+      - ./plugin:/var/www/html/wp-content/plugins/${PLUGIN_SLUG:-receiver}
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      WORDPRESS_DB_HOST: db:3306
+      WORDPRESS_DB_USER: ${DB_USERNAME}
+      WORDPRESS_DB_PASSWORD: ${DB_PASSWORD}
+      WORDPRESS_DB_NAME: ${DB_DATABASE}
+      WORDPRESS_DEBUG: 1
+      WP_URL: ${WP_URL:-http://localhost:8080}
+      WORDPRESS_CONFIG_EXTRA: |
+        define( 'WP_ENVIRONMENT_TYPE', 'local' );
+        define( 'WP_DEBUG_LOG', true );
+        define( 'WP_DEBUG_DISPLAY', false );
+        define( 'WP_HOME', getenv('WP_URL') );
+        define( 'WP_SITEURL', getenv('WP_URL') );
+    restart: unless-stopped
+
+  db:
+    image: mysql:8.0
+    environment:
+      MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_USER: ${DB_USERNAME}
+      MYSQL_PASSWORD: ""
+    volumes:
+      # Named volume, not ./docker/mysql-data. A bind mount for MySQL data is
+      # slow on macOS and Windows and hits permission errors on Linux.
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "--user=root"]
+      timeout: 20s
+      retries: 10
+    restart: unless-stopped
+
+  # WP-CLI. Runs on demand, not as a long-lived service:
+  #   docker compose run --rm wpcli plugin list
+  #
+  # user "33:33" is www-data, matching the ownership the web container creates
+  # inside wp_core. Without it the CLI runs as root and writes files Apache
+  # cannot read, which surfaces as unrelated-looking permission errors.
+  wpcli:
+    image: wordpress:cli-php8.3
+    user: "33:33"
+    volumes:
+      - wp_core:/var/www/html
+      - ./plugin:/var/www/html/wp-content/plugins/${PLUGIN_SLUG:-receiver}
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      WORDPRESS_DB_HOST: db:3306
+      WORDPRESS_DB_USER: ${DB_USERNAME}
+      WORDPRESS_DB_PASSWORD: ${DB_PASSWORD}
+      WORDPRESS_DB_NAME: ${DB_DATABASE}
+    entrypoint: wp
+    command: ["--info"]
+
+  phpmyadmin:
+    image: phpmyadmin:latest
+    ports:
+      - "${PMA_PORT:-8081}:80"
+    depends_on:
+      - db
+    environment:
+      PMA_HOST: db
+      PMA_PORT: 3306
+      PMA_USER: root
+      PMA_PASSWORD: ""
+    restart: unless-stopped
+
+volumes:
+  wp_core:
+  db_data:
