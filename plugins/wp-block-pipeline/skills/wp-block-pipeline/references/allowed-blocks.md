@@ -102,6 +102,30 @@ Use it for heights, radii, shadows, hover and focus treatments, equal-height
 cards, and anything responsive the fluid scale does not cover. Do **not** use it
 to fake a block that does not exist; that rule is unchanged.
 
+**Put the CSS in global styles, not in the plugin.** Global styles push over REST
+in seconds. Plugin CSS can only be changed by rebuilding the zip and re-uploading
+it through wp-admin, which turns a one-line spacing fix into a round trip. Keep
+JavaScript in the plugin — it changes rarely — and keep CSS where it can be
+iterated on.
+
+**One class is not enough inside a flex or grid container.** Core emits
+
+```css
+.is-layout-flex > :is(*, div){ margin: 0; }
+```
+
+at specificity **(0,1,1)** — one class plus an element. A lone custom class is
+**(0,1,0)** and loses, so margins on flex children silently do nothing. Pair the
+block's own class with yours:
+
+```css
+.wp-block-buttons.hs-nav-cta{ margin-inline-start: var(--wp--preset--spacing--50) }
+```
+
+That is (0,2,0) and wins. This is the first trap anyone hits after adopting the
+pattern above, and the symptom — a rule that is present in the stylesheet and has
+no effect — reads like a caching problem rather than a cascade one.
+
 ### JavaScript — allowed, but say what it costs first
 
 JavaScript is permitted **only** when an effect genuinely cannot be built from

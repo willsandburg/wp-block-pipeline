@@ -278,3 +278,33 @@ Site Editor and saves. On the live site the record existed as ID 7 — but
 `connect.sh`'s grep bug meant it reported `null` regardless, so this has never
 actually been tested on 7.1. If the record is created on theme activation, a
 prerequisite can be deleted from the flow.
+
+### 27. CSS in global styles, JavaScript in the plugin
+
+Learned the hard way while iterating on the live site. Plugin CSS requires
+rebuilding the zip and re-uploading through wp-admin; global styles CSS is one
+REST call. A nav-spacing fix took ten seconds after the split and would have been
+a five-minute round trip before it.
+
+JavaScript stays in the plugin because it changes rarely. CSS does not.
+
+### 28. A custom class alone loses to core's flex reset
+
+Core emits `.is-layout-flex > :is(*, div){margin:0}` at (0,1,1). A lone custom
+class is (0,1,0) and is silently overridden, so the rule appears in the
+stylesheet and does nothing — which reads like a caching problem and sends you
+looking in the wrong place. Pair the block's own class with the custom one:
+`.wp-block-buttons.hs-nav-cta` is (0,2,0) and wins.
+
+### 29. The receiver plugin must be one shared plugin, never generated per site
+
+A per-site copy cannot receive a central fix, which is the entire value of the
+subscription this pipeline is sold under. It also breaks the verified markup,
+which is checked against one implementation. One plugin, one namespace, versioned
+— now in `plugins/wp-block-pipeline/receiver/`.
+
+Worth being precise in marketing copy: a plugin **is** something extra installed.
+It is additive rather than load-bearing — deactivate it and the form block and
+reveals stop while every other page keeps working — but "nothing extra installed"
+is not defensible on a site with a contact form.
+
