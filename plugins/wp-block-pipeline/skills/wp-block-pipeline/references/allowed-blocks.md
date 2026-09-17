@@ -482,7 +482,12 @@ Every item is its own block — a bare `<li>` inside the `<ul>` fails validation
 ```
 
 The `id` must be a real attachment ID, and it appears twice — in the JSON and
-in the `wp-image-{id}` class. **Push media before pushing the page** so the IDs
+in the `wp-image-{id}` class. **Both copies must agree.** Core regenerates the
+class from the attribute, so a swap that updates one and not the other renders
+perfectly and fails validation the moment the client opens the editor. It is
+easy to miss because the class is often followed by a size class
+(`wp-image-8 size-full`), which a find-and-replace looking for `wp-image-8"`
+walks straight past. `audit.py` checks this. **Push media before pushing the page** so the IDs
 exist. An image block referencing an attachment that is not in the library
 renders but is not editable as an image.
 

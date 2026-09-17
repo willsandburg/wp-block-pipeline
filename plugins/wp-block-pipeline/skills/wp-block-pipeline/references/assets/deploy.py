@@ -79,7 +79,9 @@ def rewrite_media(html, local_media, live_media, local_url=None, live_url=None):
         html = html.replace(loc['source_url'], tok + 'URL')
         html = html.replace(f'"id":{loc["id"]},', f'"id":{tok},')
         html = html.replace(f'"mediaId":{loc["id"]},', f'"mediaId":{tok},')
-        html = html.replace(f'wp-image-{loc["id"]}"', f'wp-image-{tok}"')
+        # match the class whether or not a size class follows it - an
+        # "wp-image-8 size-full" left un-rewritten fails validation on the target
+        html = re.sub(rf'wp-image-{loc["id"]}(?=[" ])', f'wp-image-{tok}', html)
     for i, (fn, loc) in enumerate(local_media.items()):
         if fn not in live_media: continue
         tok, new = f'@@M{i}@@', live_media[fn]

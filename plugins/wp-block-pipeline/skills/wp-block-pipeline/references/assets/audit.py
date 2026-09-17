@@ -56,6 +56,7 @@ def audit(pages_dir, site_json, styles_json):
     cfg = json.load(open(site_json))
     palette = {e['slug'] for e in json.load(open(styles_json))['settings']['color']['palette']}
     media_ids = {v['id'] for v in cfg.get('media', {}).values()}
+    media_urls = {v['id']: v.get('source_url') for v in cfg.get('media', {}).values()}
     problems = []
 
     for path in sorted(glob.glob(os.path.join(pages_dir, '*.html'))):
@@ -117,6 +118,33 @@ def audit(pages_dir, site_json, styles_json):
 
         for i in {int(x) for x in re.findall(r'"(?:id|mediaId)":(\d+)', s)} - media_ids:
             bad('attachment id %d is not in the media library' % i)
+
+        # --- an image's id appears twice and both copies must agree --------
+        # The block JSON carries "id"/"mediaId"; the <img> carries the matching
+        # wp-image-{id} class, and core's save() regenerates it from the
+        # attribute. When a media swap updates one and not the other the page
+        # renders perfectly and the block fails validation the moment the client
+        # opens the editor - the exact failure this file exists to prevent.
+        for m in re.finditer(
+                r'<!-- wp:(image|cover|media-text) (\{.*?\}) (?:/)?-->', s):
+            try: attrs = json.loads(m.group(2))
+            except Exception: continue
+            want = attrs.get('id', attrs.get('mediaId'))
+            if want is None: continue
+            chunk = s[m.end():m.end() + 1200]
+            found = re.search(r'wp-image-(\d+)', chunk)
+            if not found:
+                bad('core/%s with id %s has no wp-image-%s class on its img'
+                    % (m.group(1), want, want))
+            elif int(found.group(1)) != want:
+                bad('core/%s says id %s but its img carries wp-image-%s'
+                    % (m.group(1), want, found.group(1)))
+            src = re.search(r'src="([^"]+)"', chunk)
+            real = media_urls.get(want)
+            if src and real and src.group(1) != real:
+                bad('core/%s id %s points at %s, but attachment %s is %s'
+                    % (m.group(1), want, src.group(1).rsplit('/', 1)[-1],
+                       want, real.rsplit('/', 1)[-1]))
 
         print('  %-18s %s' % (name, 'PASS' if not [p for p in problems if p.startswith(name)] else 'FAIL'))
 
