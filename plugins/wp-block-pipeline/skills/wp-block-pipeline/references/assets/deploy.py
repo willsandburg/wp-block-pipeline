@@ -57,6 +57,13 @@ def api(cfg, method, path, data=None, headers=None, binary=None):
     elif data is not None: args += ['-H', 'Content-Type: application/json', '-d', json.dumps(data)]
     out = subprocess.run(args, capture_output=True, text=True).stdout
     body, code = out.rsplit('\n', 1)
+    if 'sgcaptcha' in body:
+        # SiteGround's anti-bot answers 202 with a challenge page, so nothing
+        # reached WordPress. Stop rather than report a 202 as if it worked.
+        ip = re.search(r'ipc:([0-9a-f.:]+):', body)
+        sys.exit(f"\n  ! SiteGround's bot captcha blocked this request"
+                 f"{' from IP ' + ip.group(1) if ip else ''}. Nothing was changed.\n"
+                 f"    Ask SiteGround support to whitelist that IP for the site, then re-run.")
     return code.strip(), (json.loads(body) if body.strip().startswith(('{', '[')) else body)
 
 def rewrite_media(html, local_media, live_media, local_url=None, live_url=None):
