@@ -12,18 +12,42 @@ the target's own IDs and URLs before the pages go up. Skip that and the images
 break and the Cover blocks fail validation.
 
 Order is fixed and matters: styles, then media, then pages.
+Page titles, order, site title, logo and icon come from site/pages/_pages.json;
+a post's featured image from a "featured" filename in site/posts/_meta.json.
 """
 import json, sys, os, subprocess, re, mimetypes
 
-PAGES = [
-    # file,           title,        slug,       menu_order, front page?
-    ('home.html',     'Home',       'home',      1, True),
-    ('output.html',   'The output', 'output',    2, False),
-    ('services.html', 'Services',   'services',  3, False),
-    ('pricing.html',  'Pricing',    'pricing',   4, False),
-    ('about.html',    'About',      'about',     5, False),
-    ('contact.html',  'Contact',    'contact',   6, False),
-]
+def load_manifest():
+    """Page list, site title, logo and icon for this site.
+
+    Read from site/pages/_pages.json so nothing site-specific lives in this
+    script. Without the file, every page file not starting with "_" is pushed,
+    home.html first as the front page, the rest in name order, titled from the
+    filename.
+
+        {
+          "site_title": "Keep Bricks",
+          "logo": "logo.png", "icon": "favicon.png",
+          "pages": [
+            {"file": "home.html", "title": "Home", "slug": "home", "front": true},
+            {"file": "services.html", "title": "Services"}
+          ]
+        }
+
+    slug defaults to the filename, menu_order to the list position.
+    """
+    path = 'site/pages/_pages.json'
+    m = json.load(open(path)) if os.path.exists(path) else {}
+    pages = m.get('pages') or [
+        {'file': f} for f in sorted(os.listdir('site/pages'), key=lambda f: (f != 'home.html', f))
+        if f.endswith('.html') and not f.startswith('_')]
+    out = []
+    for i, p in enumerate(pages, 1):
+        stem = p['file'][:-5]
+        out.append((p['file'], p.get('title') or stem.replace('-', ' ').title(),
+                    p.get('slug') or stem, p.get('menu_order', i),
+                    p.get('front', stem == 'home')))
+    return m, out
 
 def api(cfg, method, path, data=None, headers=None, binary=None):
     args = ['curl', '-s', '-w', '\n%{http_code}', '-X', method,
@@ -64,6 +88,7 @@ def main(cfg_path, dry=False):
     cfg = json.load(open(cfg_path))
     local = json.load(open('site/site.json'))
     cfg.setdefault('media', {}); cfg.setdefault('pages', {})
+    manifest, pages = load_manifest()
     say = lambda m: print('  ' + m)
     print(f"\n== target: {cfg['url']}  {'(DRY RUN)' if dry else ''}\n")
 
@@ -99,7 +124,7 @@ def main(cfg_path, dry=False):
 
     # 3 ----------------------------------------------------------------- pages
     front = None
-    for fn, title, slug, order, is_front in PAGES:
+    for fn, title, slug, order, is_front in pages:
         src = os.path.join('site/pages', fn)
         if not os.path.exists(src): say(f'! missing {src}'); continue
         html = rewrite_media(open(src).read(), local.get('media', {}), cfg['media'],
@@ -118,11 +143,47 @@ def main(cfg_path, dry=False):
         say(f'{title:<12} -> id {d["id"]}')
         json.dump(cfg, open(cfg_path, 'w'), indent=2)
 
+    # 3b ---------------------------------------------------------------- posts
+    meta_path = 'site/posts/_meta.json'
+    blog_id = None
+    if os.path.exists(meta_path):
+        cfg.setdefault('posts', {})
+        for m in json.load(open(meta_path)):
+            slug = m['slug']; src = os.path.join('site/posts', slug + '.html')
+            if not os.path.exists(src): say('! missing %s' % src); continue
+            html = rewrite_media(open(src).read(), local.get('media', {}), cfg['media'],
+                                 local.get('url'), cfg.get('url'))
+            if dry: say('would push post "%s"' % m['title']); continue
+            body = {'title': m['title'], 'slug': slug, 'status': 'publish',
+                    'content': html, 'excerpt': m['excerpt']}
+            # featured image by filename, so it resolves to the target's own ID
+            fn = m.get('featured')
+            if fn and fn in cfg['media']: body['featured_media'] = cfg['media'][fn]['id']
+            ep = ('/wp-json/wp/v2/posts/%s' % cfg['posts'][slug]) if slug in cfg['posts'] else '/wp-json/wp/v2/posts'
+            code, d = api(cfg, 'POST', ep, data=body)
+            if code not in ('200', '201'): say('! post %s failed: %s %s' % (slug, code, str(d)[:140])); return 1
+            cfg['posts'][slug] = d['id']
+            say('post %-38s -> id %s' % (m['title'][:38], d['id']))
+            json.dump(cfg, open(cfg_path, 'w'), indent=2)
+
+        # The Blog page carries no content. The theme's Blog Home template
+        # renders the query loop, so no template-level markup is generated here.
+        if not dry:
+            body = {'title': 'Blog', 'slug': 'blog', 'status': 'publish',
+                    'content': '', 'menu_order': len(pages) + 1}
+            ep = ('/wp-json/wp/v2/pages/%s' % cfg['pages']['blog.html']) if 'blog.html' in cfg['pages'] else '/wp-json/wp/v2/pages'
+            code, d = api(cfg, 'POST', ep, data=body)
+            if code in ('200', '201'):
+                cfg['pages']['blog.html'] = d['id']; blog_id = d['id']
+                say('Blog page   -> id %s' % d['id'])
+
     # 4 -------------------------------------------------------------- settings
     if not dry:
-        s = {'title': 'Highland Sites'}
+        s = {}
+        if manifest.get('site_title'): s['title'] = manifest['site_title']
         if front: s.update({'show_on_front': 'page', 'page_on_front': front})
-        for key, fnm in (('site_logo', 'logo-mark.png'), ('site_icon', 'favicon.png')):
+        if blog_id: s['page_for_posts'] = blog_id
+        for key, fnm in (('site_logo', manifest.get('logo')), ('site_icon', manifest.get('icon'))):
             if fnm in cfg['media']: s[key] = cfg['media'][fnm]['id']
         code, _ = api(cfg, 'POST', '/wp-json/wp/v2/settings', data=s)
         say(f'settings (title, front page, logo, icon) -> HTTP {code}')

@@ -110,6 +110,7 @@ files, `bootstrap` and `connect` scripts, `.env.example`, `.gitignore`,
 | --- | --- |
 | `/wp-start` | Set up a site end to end, local or live. The main entry point. |
 | `/wp-push` | Push styles, media and pages in the correct order. |
+| `/wp-publish` | Publish to a live site: one-click connect, audit, dry run, push, live checks. |
 
 ---
 

@@ -6,14 +6,14 @@
   },
   "metadata": {
     "description": "Build WordPress sites with Claude and hand them off to clients who can edit them.",
-    "version": "0.6.1"
+    "version": "0.6.2"
   },
   "plugins": [
     {
       "name": "wp-block-pipeline",
       "source": "./plugins/wp-block-pipeline",
       "description": "Generate WordPress sites as core blocks and global styles, push them over REST, and hand off a site the client can edit in Gutenberg. No page builder, no subscription.",
-      "version": "0.6.1",
+      "version": "0.6.2",
       "category": "wordpress"
     }
   ]

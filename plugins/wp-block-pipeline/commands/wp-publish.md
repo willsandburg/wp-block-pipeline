@@ -76,6 +76,9 @@ endpoint accepts only a wordpress.org `slug`. So this step is theirs:
 > Go to `{site}/wp-admin/plugin-install.php?tab=upload`, upload
 > `plugin/highlandsites.zip`, and activate it.
 
+Copy the zip into the project first so they can find it:
+`mkdir -p plugin && cp "${CLAUDE_PLUGIN_ROOT}/receiver/highlandsites.zip" plugin/`
+
 Wait for confirmation before pushing pages. Do not work around it.
 
 ## Phase 4 — Check before pushing
@@ -97,6 +100,11 @@ Non-zero exit means stop and fix. Do not push a page that fails.
 ```
 python3 deploy.py site/site.live.json --dry
 ```
+
+The page list, titles, order, site title, logo and icon come from
+`site/pages/_pages.json`. If it is missing, write it now from the pages that
+exist (see the docstring in `deploy.py`) rather than letting titles be guessed
+from filenames. Check the dry run shows this site's name, not another's.
 
 Show them exactly what would be uploaded and created. Then, once they confirm:
 

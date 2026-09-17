@@ -193,6 +193,10 @@ site config immediately.
 Then one page at a time, starting with home. After each push, stop and ask them
 to look.
 
+Keep `site/pages/_pages.json` current as pages are added: site title, logo and
+icon filenames, and each page's file, title and whether it is the front page.
+`/wp-publish` reads it to push the same site to a live install.
+
 ## Phase 7 — Check the result
 
 Run the mechanical checks first — most of this needs no browser. Per page:
