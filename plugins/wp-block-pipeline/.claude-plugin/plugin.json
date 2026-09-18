@@ -1,6 +1,6 @@
 {
   "name": "wp-block-pipeline",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "description": "Generate WordPress sites as core blocks and global styles, push them over REST, and hand off a site the client can edit in Gutenberg.",
   "author": {
     "name": "Will Sandburg",

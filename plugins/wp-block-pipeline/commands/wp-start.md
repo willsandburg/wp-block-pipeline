@@ -219,6 +219,10 @@ failures that otherwise reach a finished page:
   like a button while the front end still "works". Fix it in the design system
   so every dark CTA on the site is fixed at once, not on the one page where it
   was noticed.
+- **A link on the dark panel that vanishes.** Link colour is set once, for the
+  light canvas. On a dark section it can land within a shade or two of the
+  background, and the site footer is usually where it shows up — after the
+  pages have all been signed off.
 - **Secondary text that fails contrast** on the surface it actually sits on.
 - **A ragged grid row.** `minimumColumnWidth` decides the column count from the
   space available. Pick one that divides the wide width cleanly — at a 76rem

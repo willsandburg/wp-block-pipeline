@@ -346,9 +346,10 @@ gets judged after four pages already depend on it.
 
 It is deliberately built to expose the failures that otherwise survive to a
 finished page: a filled button on the dark panel that matches the panel and
-stops reading as a button, secondary text that fails contrast on the surface it
-actually sits on, a grid row that goes ragged because `minimumColumnWidth` does
-not divide the wide width cleanly, and a heading that wraps past three lines at
+stops reading as a button, a link on the dark panel that sits a shade away from
+its background, secondary text that fails contrast on the surface it actually
+sits on, a grid row that goes ragged because `minimumColumnWidth` does not
+divide the wide width cleanly, and a heading that wraps past three lines at
 375px. Every one of those is a design-system fix, not a page fix.
 
 After media exists, append the image section and re-push so Image, Cover and
