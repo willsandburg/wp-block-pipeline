@@ -180,9 +180,90 @@ without it will be generic, and styling does not fix that afterwards.
 Write `site/styles.json` per `references/global-styles.md`, derived from the
 brand assets or the interview answers.
 
-Push it, then **stop and ask the person to look at the site.** Do not continue
-to pages until they confirm. This is the highest-leverage step and the cheapest
-one to redo.
+Push it, then go straight to Phase 5a. An empty site is not something anyone can
+judge a design system by.
+
+## Phase 5a — The style specimen
+
+**Always. Every site, every time.** Copy `style-specimen.html` and `specimen.py`
+from `references/assets/` into the project root and run:
+
+```
+python3 specimen.py site/site.json
+```
+
+It publishes one page carrying every style on the site: h1 through h6, body copy
+at each size, secondary and centred text, bold, italic, inline links, both button
+styles at rest, lists, a quote, a table, an FAQ, separators, the six palette
+swatches, a grid, a wrapping row, unequal columns, the spacing scale, and
+full-bleed accent and dark panels.
+
+Then **stop and ask the person to look at it.** Do not continue to pages until
+they confirm. This is the highest-leverage moment in the whole build and the
+cheapest one to redo — every page after this inherits whatever they accept here.
+
+Send them the URL and tell them what to do on it, because these are the things a
+screenshot cannot show:
+
+- hover every button, then Tab through them — rest, hover and keyboard focus are
+  three separate states and all three must be visible
+- open and close the FAQ
+- drag the window from wide to phone width and watch the headline scale and the
+  grid reflow
+
+**Read it yourself before handing it over.** It is built to expose the four
+failures that otherwise reach a finished page:
+
+- **A filled button on the dark panel that matches the panel.** If the primary
+  button's background is the same colour as the dark section, it stops looking
+  like a button while the front end still "works". Fix it in the design system
+  so every dark CTA on the site is fixed at once, not on the one page where it
+  was noticed.
+- **Secondary text that fails contrast** on the surface it actually sits on.
+- **A ragged grid row.** `minimumColumnWidth` decides the column count from the
+  space available. Pick one that divides the wide width cleanly — at a 76rem
+  wide size, 22rem gives exactly three.
+- **A heading that wraps past three lines at 375px.** Cap the top of the type
+  scale rather than repairing it page by page later.
+
+Once media exists (Phase 6), append the image section and re-push, so Image,
+Cover and Media & Text are judged too:
+
+```
+python3 specimen.py site/site.json --with-media photo.jpg hero.jpg
+```
+
+The specimen's page ID is recorded under `specimen_page`, never under `pages`,
+so `/wp-publish` will not push it to a live site. Remove it before handover:
+
+```
+python3 specimen.py site/site.json --remove
+```
+
+## Phase 5b — Put the brand assets in the project
+
+Once they have accepted the styles, **copy the brand source files into
+`resources/design/`** rather than leaving them scattered across the machine. A
+later session cannot find a brand guide it was never told about, and asking the
+person a second time where their logo lives is the kind of thing that makes the
+tool feel like it has no memory.
+
+Copy in whatever exists — brand guide, palette file, logo exports, fonts,
+photography — and write `resources/design/SOURCES.md` recording, for each one,
+where it came from and what it is authoritative for. Keep the original paths in
+that file: the copies go stale, and the file is how anyone finds the current
+version again.
+
+`resources/design/` is gitignored except for `SOURCES.md`, deliberately. Client
+photography and licensed fonts do not belong in a repository, but the record of
+where they live does, and it survives a clone.
+
+Then record in `CLAUDE.md` the brand rules that actually bind the build — the
+name's exact spelling, any trademark the guide says to avoid, what may and may
+not be claimed about the work shown, and any colour pairing the guide forbids.
+**Where a brand rule and an instruction conflict, raise it before building, not
+after.** Reading the guide properly at this point routinely turns up two or
+three of these, and catching them is worth more than any styling decision.
 
 ## Phase 6 — Pages
 
@@ -226,6 +307,12 @@ shipping those is the same failure as shipping demo content.
 
 Report what passed and what did not. Do not call the site finished until all
 four pass on every page.
+
+Then remove the specimen — it is a working reference, not site content:
+
+```
+python3 specimen.py site/site.json --remove
+```
 
 ---
 

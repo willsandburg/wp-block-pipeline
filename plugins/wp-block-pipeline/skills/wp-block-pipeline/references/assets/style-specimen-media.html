@@ -1,0 +1,54 @@
+<!--
+  Append this to style-specimen.html once media exists, then re-push the
+  specimen. Image, Cover and Media & Text all embed a real attachment ID, so
+  they cannot appear on the specimen before the media library has something in
+  it.
+
+  Substitute four placeholders from site.json's `media` map. The same file can
+  fill both slots, though a landscape photo suits the Cover better:
+
+    __IMAGE_ID__    __IMAGE_URL__     any image
+    __COVER_ID__    __COVER_URL__     a landscape image
+
+  Each ID appears twice — in the block's JSON and in the `wp-image-{id}` class.
+  Both copies must agree or the block fails validation the moment the client
+  opens the editor.
+-->
+
+<!-- wp:group {"metadata":{"name":"Specimen: images"},"align":"wide","style":{"spacing":{"padding":{"top":"var:preset|spacing|60","bottom":"var:preset|spacing|60"}}},"layout":{"type":"constrained"}} -->
+<div class="wp-block-group alignwide" style="padding-top:var(--wp--preset--spacing--60);padding-bottom:var(--wp--preset--spacing--60)"><!-- wp:heading -->
+<h2 class="wp-block-heading">Images</h2>
+<!-- /wp:heading -->
+
+<!-- wp:paragraph {"textColor":"secondary","fontSize":"small"} -->
+<p class="has-secondary-color has-text-color has-small-font-size">Corner radius, caption style and the width an image takes all come from the design system, not from the image.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:image {"id":__IMAGE_ID__,"sizeSlug":"large","linkDestination":"none"} -->
+<figure class="wp-block-image size-large"><img src="__IMAGE_URL__" alt="Describe what is in the picture" class="wp-image-__IMAGE_ID__"/><figcaption class="wp-element-caption">A caption, at the small size.</figcaption></figure>
+<!-- /wp:image -->
+
+<!-- wp:heading {"level":3} -->
+<h3 class="wp-block-heading">Image beside text</h3>
+<!-- /wp:heading -->
+
+<!-- wp:media-text {"align":"wide","mediaId":__IMAGE_ID__,"mediaType":"image"} -->
+<div class="wp-block-media-text alignwide is-stacked-on-mobile"><figure class="wp-block-media-text__media"><img src="__IMAGE_URL__" alt="Describe what is in the picture" class="wp-image-__IMAGE_ID__ size-full"/></figure><div class="wp-block-media-text__content"><!-- wp:heading {"level":3} -->
+<h3 class="wp-block-heading">Two columns that stack</h3>
+<!-- /wp:heading -->
+
+<!-- wp:paragraph -->
+<p>Media &amp; Text keeps its stacking behaviour on a phone. Hand-building the same layout out of Columns loses it.</p>
+<!-- /wp:paragraph --></div></div>
+<!-- /wp:media-text --></div>
+<!-- /wp:group -->
+
+<!-- wp:cover {"url":"__COVER_URL__","id":__COVER_ID__,"dimRatio":50,"isDark":true,"align":"full","layout":{"type":"constrained"}} -->
+<div class="wp-block-cover alignfull"><span aria-hidden="true" class="wp-block-cover__background has-background-dim"></span><img class="wp-block-cover__image-background wp-image-__COVER_ID__" alt="" src="__COVER_URL__" data-object-fit="cover"/><div class="wp-block-cover__inner-container"><!-- wp:heading -->
+<h2 class="wp-block-heading">Text over an image</h2>
+<!-- /wp:heading -->
+
+<!-- wp:paragraph -->
+<p>Check this against the brightest part of the photograph, not its average. An average hides the one band where white text stops being readable.</p>
+<!-- /wp:paragraph --></div></div>
+<!-- /wp:cover -->

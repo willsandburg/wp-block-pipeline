@@ -100,7 +100,17 @@ protects real credentials elsewhere; do not ask anyone to weaken it.
 
 `references/assets/` holds the files copied into each new project: the compose
 files, `bootstrap` and `connect` scripts, `.env.example`, `.gitignore`,
-`.gitattributes`.
+`.gitattributes`, and the style specimen — `style-specimen.html`,
+`style-specimen-media.html` and `specimen.py`.
+
+**The style specimen is not optional.** Straight after the global styles are
+pushed, `specimen.py` publishes one page carrying every style on the site —
+h1 to h6, body copy at each size, both button styles, links, lists, quote,
+table, FAQ, the six palette swatches, grids, columns, the spacing scale, and
+the accent and dark panels. The design system gets judged there, once, before
+any real page depends on it. Its page ID is kept under `specimen_page` rather
+than `pages`, so it is never pushed to a live site, and it is removed before
+handover.
 
 ---
 

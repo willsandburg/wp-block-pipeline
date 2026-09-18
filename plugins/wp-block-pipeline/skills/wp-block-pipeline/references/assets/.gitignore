@@ -2,7 +2,8 @@
 site/site.json
 site/site.live.json
 site/site.*.json.backup.*
-resources/design/
+resources/design/*
+!resources/design/SOURCES.md
 wp-content/
 *.log
 .DS_Store

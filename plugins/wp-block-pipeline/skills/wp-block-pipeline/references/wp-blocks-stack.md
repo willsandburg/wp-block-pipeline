@@ -323,7 +323,71 @@ curl -X POST "$WP_URL/wp-json/wp/v2/global-styles/$GLOBAL_STYLES_ID" \
   -d @site/styles.json
 ```
 
-Load the site and look at it before going further.
+Then publish the style specimen before building anything else.
+
+---
+
+## Step 6b — The style specimen
+
+**Every site, every time.** Copy `style-specimen.html` and `specimen.py` from
+[assets/](assets/) into the project root:
+
+```bash
+python3 specimen.py site/site.json
+```
+
+One page carrying every style on the site — h1 to h6, body copy at each size,
+both button styles, links, lists, a quote, a table, an FAQ, the six palette
+swatches, a grid, unequal columns, the spacing scale, and full-bleed accent and
+dark panels. Stop and let the person look at it before any real page exists.
+
+An empty site tells you nothing, and a design system judged one page at a time
+gets judged after four pages already depend on it.
+
+It is deliberately built to expose the failures that otherwise survive to a
+finished page: a filled button on the dark panel that matches the panel and
+stops reading as a button, secondary text that fails contrast on the surface it
+actually sits on, a grid row that goes ragged because `minimumColumnWidth` does
+not divide the wide width cleanly, and a heading that wraps past three lines at
+375px. Every one of those is a design-system fix, not a page fix.
+
+After media exists, append the image section and re-push so Image, Cover and
+Media & Text are judged too:
+
+```bash
+python3 specimen.py site/site.json --with-media photo.jpg hero.jpg
+```
+
+The page ID is recorded under `specimen_page`, **not** under `pages`. Anything
+in `pages` is site content and `deploy.py` pushes it to the live site; the
+specimen must never ship. Remove it before handover:
+
+```bash
+python3 specimen.py site/site.json --remove
+```
+
+---
+
+## Step 6c — Put the brand assets in the project
+
+Once the styles are accepted, copy the brand source files into
+`resources/design/` — brand guide, palette, logo exports, fonts, photography —
+and write `resources/design/SOURCES.md` recording where each came from and what
+it is authoritative for.
+
+Leaving them scattered across the machine means the next session cannot find
+them, and asking the person again where their logo lives makes the tool look
+like it has no memory. Keep the original paths in `SOURCES.md`: copies go stale
+and that file is how anyone finds the current version.
+
+`resources/design/` is gitignored except for `SOURCES.md`. Client photography
+and licensed fonts do not belong in a repository; the record of where they live
+does, and it survives a clone.
+
+Record in `CLAUDE.md` the brand rules that bind the build — exact spelling of
+the name, trademarks the guide says to avoid, what may and may not be claimed
+about the work being shown, colour pairings the guide forbids. **Raise conflicts
+between a brand rule and an instruction before building, not after.**
 
 ---
 
