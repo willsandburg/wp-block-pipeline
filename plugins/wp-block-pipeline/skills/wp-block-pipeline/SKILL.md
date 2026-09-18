@@ -100,8 +100,9 @@ protects real credentials elsewhere; do not ask anyone to weaken it.
 
 `references/assets/` holds the files copied into each new project: the compose
 files, `bootstrap` and `connect` scripts, `.env.example`, `.gitignore`,
-`.gitattributes`, and the style specimen — `style-specimen.html`,
-`style-specimen-media.html` and `specimen.py`.
+`.gitattributes`, the style specimen — `style-specimen.html`,
+`style-specimen-media.html` and `specimen.py` — and `editor-check.mjs`,
+which opens each page in the block editor and counts recovery prompts.
 
 **The style specimen is not optional.** Straight after the global styles are
 pushed, `specimen.py` publishes one page carrying every style on the site —

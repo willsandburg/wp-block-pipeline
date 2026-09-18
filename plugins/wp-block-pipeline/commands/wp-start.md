@@ -291,6 +291,13 @@ every colour slug existing in the palette, every attachment ID present in the
 library. This catches things reading the page will not, such as an `h1 -> h3`
 skip.
 
+The editor check is scriptable — `editor-check.mjs` logs in, opens every page
+in `site.json` and counts `.block-editor-warning` **inside the canvas iframe**.
+Querying the top document finds zero blocks and zero warnings, which reads as a
+pass and proves nothing. It also drops out of the code editor first: that choice
+is a persisted user preference, so one stray switch leaves every later session
+with no canvas at all, which looks exactly like a page that failed to load.
+
 Then per page, by eye: open in the editor and check for block recovery prompts,
 check the locking behaves as decided, and check body text contrast against its
 **actual** background — for a Cover that means measuring the image's brightest
